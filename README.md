@@ -2,29 +2,22 @@
 
 Applicazione web personale, mobile-first, per registrare manualmente entrate e uscite e consultare il riepilogo mese per mese.
 
-## Stato attuale
+## Funzioni MVP presenti
+- Dashboard con saldo, entrate e uscite del mese.
+- Inserimento manuale di entrate e uscite (descrizione, categoria, data, importo e note).
+- Navigazione tra i mesi e grafico mensile.
+- Esportazione CSV e backup JSON.
+- Layout ottimizzato per iPhone e manifest per aggiunta alla Home.
 
-Prima versione dell'interfaccia (MVP):
-- dashboard con saldo, entrate e uscite del mese;
-- inserimento manuale di entrate e uscite con descrizione, categoria, data e note;
-- navigazione tra i mesi;
-- grafico giornaliero essenziale;
-- esportazione CSV e backup JSON;
-- layout ottimizzato per iPhone e metadati per l'aggiunta alla Home.
+## Stato importante: cloud non ancora attivo
+La versione iniziale salva i movimenti nel localStorage del browser: non c'è ancora sincronizzazione tra dispositivi. Prima di inserire dati reali, completa la configurazione Supabase descritta in [docs/SUPABASE-SETUP.md](docs/SUPABASE-SETUP.md). Lo schema protetto è in [supabase/schema.sql](supabase/schema.sql).
 
-## Avvio
+## Sviluppo e pubblicazione
+I file sono statici: `index.html`, `styles.css` e `app.js`. Possono essere serviti da un hosting statico.
 
-Aprire `index.html` con un server statico oppure pubblicare il repository con GitHub Pages.
+Il repository è privato. GitHub Pages per repository privati richiede un piano GitHub Pro, Team o Enterprise; con GitHub Free il repository deve essere pubblico. Non rendere pubblico il repository senza averlo deciso consapevolmente.
 
-## Importante: persistenza dei dati
-
-Questa prima versione salva temporaneamente i movimenti in `localStorage` del browser. **Non è ancora sincronizzata con il cloud** e i dati non sono condivisi tra dispositivi. Prima di inserire dati finanziari reali, va completata l'integrazione Supabase con autenticazione, policy Row Level Security e backup.
-
-## Prossimi passaggi
-
-1. Creare un progetto Supabase.
-2. Configurare autenticazione e tabella dei movimenti con policy RLS.
-3. Aggiungere il client Supabase e migrare i movimenti locali.
-4. Abilitare GitHub Pages e testare l'installazione su iOS.
-
-Non inserire mai nel repository password, service-role key o altre chiavi segrete.
+## Sicurezza
+- Non inserire password, token, Supabase Secret key o service_role key nel repository.
+- La publishable key può stare nel client solo con RLS abilitato e policy ristrette.
+- Lo schema SQL autorizza ogni utente autenticato ad accedere esclusivamente alle proprie righe.

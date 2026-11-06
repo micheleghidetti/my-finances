@@ -53,5 +53,7 @@
 </div>
 <div class="modal-backdrop hidden" id="settingsBackdrop"><div class="modal"><div class="modal-title-row"><div><p class="eyebrow">PREFERENZE</p><h2>Impostazioni</h2></div><button class="icon-button" id="closeSettings">✕</button></div><p class="settings-note">La prima versione salva i dati in modo locale su questo browser. Il database cloud verrà attivato dopo la configurazione di Supabase.</p><button class="secondary-button" id="exportBtn">Esporta movimenti in CSV</button><button class="secondary-button" id="backupBtn">Scarica backup JSON</button><button class="danger-button" id="clearBtn">Cancella tutti i movimenti</button></div></div>
 <div class="toast" id="toast" role="status"></div>
+<div id="authScreen" style="display:none;min-height:100vh;place-items:center;padding:24px"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="./app.js"></script>
 </body></html>

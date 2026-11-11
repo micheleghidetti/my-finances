@@ -13,3 +13,6 @@
 .home-range{position:relative;z-index:5;pointer-events:auto}.home-range button{position:relative;z-index:6;pointer-events:auto;cursor:pointer;touch-action:manipulation}
 
 .overview-head{position:relative;z-index:2}.home-range{display:flex;align-items:center;gap:6px;position:relative;z-index:20;isolation:isolate;pointer-events:auto;overflow-x:auto;touch-action:pan-x}.home-range button{display:inline-flex;align-items:center;justify-content:center;min-height:36px;position:relative;z-index:21;pointer-events:auto;touch-action:manipulation;cursor:pointer;-webkit-appearance:none;appearance:none}
+
+.home-range{width:100%;max-width:100%;overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:none;-webkit-overflow-scrolling:touch;flex-wrap:nowrap}.home-range button{flex:0 0 auto;min-width:max-content}
+.overview-head{overflow:visible}

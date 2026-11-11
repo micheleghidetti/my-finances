@@ -9,3 +9,5 @@
 
 .overview-head{align-items:flex-end;flex-wrap:wrap}.overview-head .home-range{margin:0;max-width:100%;flex:1 1 100%;order:2}.home-month-picker{width:max-content;margin:-3px 0 13px auto}.home-month-picker strong{min-width:112px;text-transform:capitalize}
 @media(min-width:520px){.overview-head{flex-wrap:nowrap;align-items:center}.overview-head .home-range{flex:0 1 auto;order:initial;max-width:68%}.overview-head .home-range button{padding:8px 9px}.home-month-picker{margin:-3px 0 13px auto}}
+
+.home-range{position:relative;z-index:5;pointer-events:auto}.home-range button{position:relative;z-index:6;pointer-events:auto;cursor:pointer;touch-action:manipulation}

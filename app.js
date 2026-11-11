@@ -25,22 +25,18 @@ function movementHTML(x){const ico={Casa:'⌂',Alimentari:'🛒',Trasporti:'🚆
 function render(){const list=selected(),t=totals(list);$('monthTitle').textContent=viewDate.toLocaleDateString('it-IT',{month:'long',year:'numeric'});$('periodLabel').textContent=viewDate.toLocaleDateString('it-IT',{month:'long'});$('balance').textContent=fmt(t.income-t.expense);$('incomeTotal').textContent=fmt(t.income);$('expenseTotal').textContent=fmt(t.expense);renderChart(list);const sorted=[...list].sort((a,b)=>b.date.localeCompare(a.date)||b.created-a.created).slice(0,6);$('movementList').innerHTML=sorted.length?sorted.map(movementHTML).join(''):'<div class="empty-state">Ancora nessun movimento.<br>Registra la prima entrata o uscita.</div>';renderStats()}
 
 function renderChart(list){
- const el=$('monthlyChart'),periods=[];
- if(statsRange==='week'){
-  for(let i=6;i>=0;i--){const d=new Date(viewDate);d.setDate(d.getDate()-i);periods.push({label:d.toLocaleDateString('it-IT',{weekday:'short'}),key:d.toISOString().slice(0,10),kind:'day'})}
- }else if(statsRange==='month'){
-  const last=new Date(viewDate.getFullYear(),viewDate.getMonth()+1,0).getDate();
-  for(let day=1;day<=last;day+=Math.ceil(last/7)){periods.push({label:String(day),key:monthKey(viewDate)+'-'+String(day).padStart(2,'0'),kind:'week',day})}
- }else{
-  const count=statsRange==='3m'?3:statsRange==='6m'?6:12;
-  for(let i=count-1;i>=0;i--){const d=new Date(viewDate.getFullYear(),viewDate.getMonth()-i,1);periods.push({label:d.toLocaleDateString('it-IT',{month:'short'}),key:monthKey(d),kind:'month'})}
+ const el=$('monthlyChart'),daysInMonth=new Date(viewDate.getFullYear(),viewDate.getMonth()+1,0).getDate();
+ const periods=[];
+ for(let day=1;day<=daysInMonth;day+=Math.ceil(daysInMonth/7)){
+  periods.push({label:String(day),day});
  }
- const vals=periods.map(p=>{const rows=items.filter(x=>p.kind==='day'?x.date===p.key:p.kind==='week'?x.date.startsWith(p.key.slice(0,7))&&Number(x.date.slice(8,10))>=p.day&&Number(x.date.slice(8,10))<p.day+Math.ceil(new Date(viewDate.getFullYear(),viewDate.getMonth()+1,0).getDate()/7):x.date.startsWith(p.key));return totals(rows)});
+ const vals=periods.map(p=>{
+  const rows=list.filter(x=>Number(x.date.slice(8,10))>=p.day&&Number(x.date.slice(8,10))<p.day+Math.ceil(daysInMonth/7));
+  return totals(rows);
+ });
  const max=Math.max(1,...vals.flatMap(v=>[v.income,v.expense]));
  el.innerHTML=vals.map((v,i)=>'<div class="chart-group"><div class="bar income" style="height:'+Math.max(2,v.income/max*100)+'%"></div><div class="bar expense" style="height:'+Math.max(2,v.expense/max*100)+'%"></div><span class="chart-label">'+periods[i].label+'</span></div>').join('');
- $('homeChartTitle').textContent={week:'Andamento settimanale',month:'Andamento mensile','3m':'Andamento ultimi 3 mesi','6m':'Andamento ultimi 6 mesi',year:'Andamento annuale'}[statsRange];
- $('homeMonthPicker').style.display=statsRange==='month'?'flex':'none';
- $('homeRange').querySelectorAll('[data-range]').forEach(button=>button.classList.toggle('selected',button.dataset.range===statsRange));
+ $('homeChartTitle').textContent='Andamento mensile';
 }
 
 function renderStats(){
@@ -86,7 +82,6 @@ function initApp(){
  document.querySelectorAll('.type-switch button').forEach(b=>b.onclick=()=>{type=b.dataset.type;setType()});
  $('movementForm').onsubmit=async e=>{e.preventDefault();const amount=Number($('amount').value);if(!Number.isFinite(amount)||amount<=0)return toast('Inserisci un importo valido');const x={id:crypto.randomUUID(),type,description:$('description').value.trim(),amount:Math.round(amount*100)/100,category:$('category').value,date:$('date').value,notes:$('notes').value.trim(),created:Date.now()};try{await syncOne(x);items.push(x);saveLocal();$('modalBackdrop').classList.add('hidden');viewDate=new Date(x.date+'T12:00:00');render();toast('Movimento salvato e sincronizzato')}catch(err){toast('Non salvato: '+err.message)}};
  $('prevMonth').onclick=()=>{viewDate.setMonth(viewDate.getMonth()-1);render()};$('nextMonth').onclick=()=>{viewDate.setMonth(viewDate.getMonth()+1);render()};
- document.addEventListener('click',e=>{const button=e.target.closest('#homeRange button[data-range]');if(!button)return;e.preventDefault();e.stopPropagation();statsRange=button.dataset.range;render()},true);
  $('refreshBtn').onclick=async()=>{const b=$('refreshBtn');if(b.disabled)return;b.disabled=true;b.classList.add('is-refreshing');try{await loadCloud();toast('Movimenti aggiornati')}catch(err){toast('Aggiornamento non riuscito: '+err.message)}finally{b.disabled=false;b.classList.remove('is-refreshing')}};$('settingsBtn').onclick=()=>$('settingsBackdrop').classList.remove('hidden');$('closeSettings').onclick=()=>$('settingsBackdrop').classList.add('hidden');$('exportBtn').onclick=csv;$('backupBtn').onclick=()=>download(JSON.stringify({version:1,exportedAt:new Date().toISOString(),items},null,2),'my-finances-backup.json','application/json');
  $('clearBtn').onclick=async()=>{if(confirm('Vuoi eliminare definitivamente tutti i movimenti del tuo account? Questa operazione si rifletterà su tutti i dispositivi.')){const {error}=await sb.from('transactions').delete().eq('user_id',currentUser.id);if(error)return toast('Errore: '+error.message);const {count,error:checkError}=await sb.from('transactions').select('id',{count:'exact',head:true});if(checkError)return toast('Impossibile verificare l’eliminazione: '+checkError.message);if(count>0)return toast('Attenzione: alcuni movimenti risultano ancora presenti.');items=[];localStorage.removeItem(STORE);render();$('settingsBackdrop').classList.add('hidden');toast('Movimenti eliminati da tutti i dispositivi')}};
  $('allMovements').onclick=()=>{const all=[...items].sort((a,b)=>b.date.localeCompare(a.date));$('movementList').innerHTML=all.length?all.map(movementHTML).join(''):'<div class="empty-state">Nessun movimento registrato.</div>'};

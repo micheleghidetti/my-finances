@@ -30,9 +30,10 @@
       </div>
     </section>
     <section class="section-head home-only">
-      <div><p class="eyebrow">PANORAMICA</p><h2>Andamento mensile</h2></div>
+      <div><p class="eyebrow">PANORAMICA</p><h2 id="homeChartTitle">Andamento mensile</h2></div>
       <div class="month-picker"><button id="prevMonth" aria-label="Mese precedente">‹</button><strong id="monthTitle"></strong><button id="nextMonth" aria-label="Mese successivo">›</button></div>
     </section>
+    <div class="stats-range home-range home-only" id="homeRange"><button type="button" data-range="week">Settimanale</button><button type="button" data-range="month" class="selected">Mensile</button><button type="button" data-range="3m">3 mesi</button><button type="button" data-range="6m">6 mesi</button><button type="button" data-range="year">Annuale</button></div>
     <section class="chart-card home-only"><div class="chart-legend"><span><i class="dot green"></i>Entrate</span><span><i class="dot red"></i>Uscite</span></div><div id="monthlyChart" class="chart" aria-label="Grafico entrate e uscite"></div></section>
     <section class="section-head movements-head home-only"><div><p class="eyebrow">ATTIVITÀ</p><h2>Movimenti</h2></div><button class="text-button" id="allMovements">Vedi tutti</button></section>
     <div id="movementList" class="movement-list home-only"><div class="empty-state">Ancora nessun movimento.<br>Registra la prima entrata o uscita.</div></div>

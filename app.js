@@ -23,21 +23,7 @@ async function loadCloud(){
 }
 function movementHTML(x){const ico={Casa:'⌂',Alimentari:'🛒',Trasporti:'🚆',Salute:'✚',Svago:'♫',Shopping:'◇',Abbonamenti:'▣',Auto:'⌁',Viaggi:'✈',Stipendio:'▤','Lavoro extra':'✦',Rimborsi:'↩',Regali:'♡',Investimenti:'▥',Altro:'•'};return '<div class="movement"><div class="movement-icon">'+(ico[x.category]||'•')+'</div><div class="movement-info"><strong>'+escapeHTML(x.description)+'</strong><small>'+escapeHTML(x.category)+' · '+dateFmt(x.date)+'</small></div><div class="movement-amount '+x.type+'">'+(x.type==='income'?'+':'−')+' '+fmt(x.amount)+'</div></div>'}
 function render(){const list=selected(),t=totals(list);$('monthTitle').textContent=viewDate.toLocaleDateString('it-IT',{month:'long',year:'numeric'});$('periodLabel').textContent=viewDate.toLocaleDateString('it-IT',{month:'long'});$('balance').textContent=fmt(t.income-t.expense);$('incomeTotal').textContent=fmt(t.income);$('expenseTotal').textContent=fmt(t.expense);renderChart(list);const sorted=[...list].sort((a,b)=>b.date.localeCompare(a.date)||b.created-a.created).slice(0,6);$('movementList').innerHTML=sorted.length?sorted.map(movementHTML).join(''):'<div class="empty-state">Ancora nessun movimento.<br>Registra la prima entrata o uscita.</div>';renderStats()}
-
-function renderChart(list){
- const el=$('monthlyChart'),daysInMonth=new Date(viewDate.getFullYear(),viewDate.getMonth()+1,0).getDate();
- const periods=[];
- for(let day=1;day<=daysInMonth;day+=Math.ceil(daysInMonth/7)){
-  periods.push({label:String(day),day});
- }
- const vals=periods.map(p=>{
-  const rows=list.filter(x=>Number(x.date.slice(8,10))>=p.day&&Number(x.date.slice(8,10))<p.day+Math.ceil(daysInMonth/7));
-  return totals(rows);
- });
- const max=Math.max(1,...vals.flatMap(v=>[v.income,v.expense]));
- el.innerHTML=vals.map((v,i)=>'<div class="chart-group"><div class="bar income" style="height:'+Math.max(2,v.income/max*100)+'%"></div><div class="bar expense" style="height:'+Math.max(2,v.expense/max*100)+'%"></div><span class="chart-label">'+periods[i].label+'</span></div>').join('');
- $('homeChartTitle').textContent='Andamento mensile';
-}
+function renderChart(list){const el=$('monthlyChart'),d=totals(list),max=Math.max(d.income,d.expense,1),last=new Date(viewDate.getFullYear(),viewDate.getMonth()+1,0).getDate();let bars='';for(let i=1;i<=last;i+=Math.ceil(last/7)){const key=monthKey(viewDate)+'-'+String(i).padStart(2,'0'),v=totals(list.filter(x=>x.date===key));bars+='<div class="chart-group"><div class="bar income" style="height:'+Math.max(2,v.income/max*100)+'%"></div><div class="bar expense" style="height:'+Math.max(2,v.expense/max*100)+'%"></div><span class="chart-label">'+i+'</span></div>'}el.innerHTML=bars}
 
 function renderStats(){
  const list=selected(),t=totals(list),prevDate=new Date(viewDate.getFullYear(),viewDate.getMonth()-1,1),prevKey=monthKey(prevDate),prev=totals(items.filter(x=>x.date.startsWith(prevKey)));
@@ -57,19 +43,15 @@ function renderStats(){
  const maxPeriod=Math.max(1,...periodValues),trend=periods.map((p,i)=>'<div class="stat-trend-item"><div class="stat-trend-bar" style="height:'+Math.max(3,periodValues[i]/maxPeriod*100)+'%"></div><small>'+p.label+'</small><b>'+fmt(periodValues[i])+'</b></div>').join('');
  const rangeLabel={week:'Ultimi 7 giorni',month:'Mese selezionato', '3m':'Ultimi 3 mesi','6m':'Ultimi 6 mesi',year:'Anno selezionato'}[statsRange];
  const catRows=catsSorted.length?catsSorted.map(([name,value])=>'<div class="stat-cat-row"><div><span>'+escapeHTML(name)+'</span><b>'+fmt(value)+'</b></div><div class="stat-track"><i style="width:'+(value/maxCat*100)+'%"></i></div></div>').join(''):'<p class="stats-muted">Non ci sono ancora uscite in questo mese.</p>';
-
- const pieHtml=(title,rows,total)=>{if(!rows.length||total<=0)return '<article class="stats-panel"><h3>'+title+'</h3><p class="stats-muted">Nessun dato disponibile per questo mese.</p></article>';let offset=0;const colors=['#39785d','#75a98b','#d28b72','#8d9dc0','#d4b45f','#a98bbd','#6eabb1','#c47e91','#9aa49f','#bd9b78'];const slices=rows.map(([name,value],i)=>{const from=offset;offset+=value/total*100;return {name,value,color:colors[i%colors.length],from,to:offset}});const gradient=slices.map(x=>x.color+' '+x.from+'% '+x.to+'%').join(',');return '<article class="stats-panel"><h3>'+title+'</h3><div class="pie-layout"><div class="pie-chart" style="background:conic-gradient('+gradient+')"><div class="pie-hole"><b>'+fmt(total)+'</b><small>Totale</small></div></div><div class="pie-legend">'+slices.map(x=>'<div><i style="background:'+x.color+'"></i><span>'+escapeHTML(x.name)+'</span><b>'+fmt(x.value)+'</b></div>').join('')+'</div></div></article>'};
- const incomeByCat={};list.filter(x=>x.type==='income').forEach(x=>incomeByCat[x.category]=(incomeByCat[x.category]||0)+x.amount);
- const incomeRows=Object.entries(incomeByCat).sort((a,b)=>b[1]-a[1]);
  const advice=t.expense===0?'Registra le tue uscite per iniziare a individuare le aree di risparmio.':(delta!==null&&delta>0?'Le uscite sono aumentate del '+delta.toFixed(0)+'% rispetto al mese precedente. Controlla le categorie più costose.':(delta!==null&&delta<0?'Ottimo: le uscite sono diminuite del '+Math.abs(delta).toFixed(0)+'% rispetto al mese precedente.':'Confronta le categorie per individuare le spese su cui intervenire.'));
  $('statsView').innerHTML='<div class="stats-heading"><p class="eyebrow">ANALISI DELLE SPESE</p><h2>'+viewDate.toLocaleDateString('it-IT',{month:'long',year:'numeric'})+'</h2><p class="stats-muted">I valori si aggiornano in base al mese selezionato nella Home.</p></div>'+
  '<div class="stats-kpis"><article class="stat-card"><span>Risparmio del mese</span><strong class="'+(saving>=0?'positive':'negative')+'">'+fmt(saving)+'</strong><small>Entrate meno uscite</small></article><article class="stat-card"><span>Quota risparmiata</span><strong>'+ (rate===null?'—':rate.toFixed(1)+'%')+'</strong><small>Del totale delle entrate</small></article><article class="stat-card"><span>Spesa media giornaliera</span><strong>'+fmt(daily)+'</strong><small>Nel periodo selezionato</small></article><article class="stat-card"><span>Entrate assorbite</span><strong>'+(expenseRate===null?'—':expenseRate.toFixed(1)+'%')+'</strong><small>Quota del reddito spesa</small></article></div>'+
- 
- '<article class="stats-panel"><h3>Dove spendi di più</h3><p class="stats-muted">Ripartizione per categoria</p>'+catRows+'</article>'+pieHtml('Uscite per categoria',catsSorted,t.expense)+pieHtml('Entrate per categoria',incomeRows,t.income)+
+ '<article class="stats-panel"><h3>Andamento delle uscite</h3><p class="stats-muted">'+rangeLabel+'</p><div class="stats-range">'+[['week','7 giorni'],['month','Mensile'],['3m','3 mesi'],['6m','6 mesi'],['year','Annuale']].map(([key,label])=>'<button type="button" data-range="'+key+'" class="'+(statsRange===key?'selected':'')+'">'+label+'</button>').join('')+'</div><div class="stat-trend">'+trend+'</div></article>'+
+ '<article class="stats-panel"><h3>Dove spendi di più</h3><p class="stats-muted">Ripartizione per categoria</p>'+catRows+'</article>'+
  '<article class="stats-panel"><h3>Spese fisse e variabili</h3><div class="fixed-variable"><div><span>Fisse*</span><b>'+fmt(fixed)+'</b></div><div><span>Variabili</span><b>'+fmt(variable)+'</b></div></div><p class="stats-muted">* Stima: considera fisse le categorie Casa e Abbonamenti. Puoi interpretare le categorie in base alle tue abitudini.</p></article>'+
  '<article class="stats-panel"><h3>Confronto con il mese precedente</h3><p class="stats-comparison">'+(delta===null?'Dati insufficienti per il confronto.':(delta>0?'Le uscite sono aumentate del ':'Le uscite sono diminuite del ')+Math.abs(delta).toFixed(1)+'%')+'</p><p class="stats-muted">Mese precedente: '+fmt(prev.expense)+' · Mese selezionato: '+fmt(t.expense)+'</p></article>'+
  '<article class="stats-tip"><b>Un suggerimento</b><p>'+advice+'</p></article>';
-
+ $('statsView').querySelectorAll('[data-range]').forEach(button=>button.onclick=()=>{statsRange=button.dataset.range;renderStats()});
 }
 function openModal(){type='expense';$('movementForm').reset();$('date').value=new Date().toLocaleDateString('en-CA');setType();$('modalBackdrop').classList.remove('hidden')}
 function setType(){document.querySelectorAll('.type-switch button').forEach(b=>b.classList.toggle('selected',b.dataset.type===type));$('category').innerHTML=cats[type].map(c=>'<option>'+c+'</option>').join('')}

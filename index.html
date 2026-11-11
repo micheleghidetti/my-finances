@@ -20,7 +20,7 @@
     <div class="topbar-actions"><button class="icon-button" id="refreshBtn" aria-label="Aggiorna movimenti" title="Aggiorna">↻</button><button class="icon-button" id="settingsBtn" aria-label="Impostazioni">⚙</button></div>
   </header>
   <main>
-    <section class="balance-card">
+    <section class="balance-card home-only">
       <div class="balance-top"><span>Saldo del periodo</span><span class="period-pill" id="periodLabel">Questo mese</span></div>
       <div class="balance" id="balance">€ 0,00</div>
       <div class="balance-caption">Entrate meno uscite registrate</div>
@@ -29,13 +29,14 @@
         <div class="summary-tile expense"><span>↘ Uscite</span><strong id="expenseTotal">€ 0,00</strong></div>
       </div>
     </section>
-    <section class="section-head">
+    <section class="section-head home-only">
       <div><p class="eyebrow">PANORAMICA</p><h2>Andamento mensile</h2></div>
       <div class="month-picker"><button id="prevMonth" aria-label="Mese precedente">‹</button><strong id="monthTitle"></strong><button id="nextMonth" aria-label="Mese successivo">›</button></div>
     </section>
-    <section class="chart-card"><div class="chart-legend"><span><i class="dot green"></i>Entrate</span><span><i class="dot red"></i>Uscite</span></div><div id="monthlyChart" class="chart" aria-label="Grafico entrate e uscite"></div></section>
-    <section class="section-head movements-head"><div><p class="eyebrow">ATTIVITÀ</p><h2>Movimenti</h2></div><button class="text-button" id="allMovements">Vedi tutti</button></section>
-    <div id="movementList" class="movement-list"><div class="empty-state">Ancora nessun movimento.<br>Registra la prima entrata o uscita.</div></div>
+    <section class="chart-card home-only"><div class="chart-legend"><span><i class="dot green"></i>Entrate</span><span><i class="dot red"></i>Uscite</span></div><div id="monthlyChart" class="chart" aria-label="Grafico entrate e uscite"></div></section>
+    <section class="section-head movements-head home-only"><div><p class="eyebrow">ATTIVITÀ</p><h2>Movimenti</h2></div><button class="text-button" id="allMovements">Vedi tutti</button></section>
+    <div id="movementList" class="movement-list home-only"><div class="empty-state">Ancora nessun movimento.<br>Registra la prima entrata o uscita.</div></div>
+  <section id="statsView" class="stats-view" hidden></section>
   </main>
   <button class="add-fab" id="addBtn"><span>＋</span> Aggiungi movimento</button>
   <nav class="tabbar"><button class="tab active" data-tab="home"><span>⌂</span>Home</button><button class="tab" data-tab="stats"><span>▥</span>Statistiche</button><button class="tab" data-tab="history"><span>◷</span>Storico</button></nav>

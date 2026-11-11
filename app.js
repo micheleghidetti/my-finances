@@ -39,6 +39,7 @@ function renderChart(list){
  const max=Math.max(1,...vals.flatMap(v=>[v.income,v.expense]));
  el.innerHTML=vals.map((v,i)=>'<div class="chart-group"><div class="bar income" style="height:'+Math.max(2,v.income/max*100)+'%"></div><div class="bar expense" style="height:'+Math.max(2,v.expense/max*100)+'%"></div><span class="chart-label">'+periods[i].label+'</span></div>').join('');
  $('homeChartTitle').textContent={week:'Andamento settimanale',month:'Andamento mensile','3m':'Andamento ultimi 3 mesi','6m':'Andamento ultimi 6 mesi',year:'Andamento annuale'}[statsRange];
+ $('homeMonthPicker').style.display=statsRange==='month'?'flex':'none';
  $('homeRange').querySelectorAll('[data-range]').forEach(button=>button.classList.toggle('selected',button.dataset.range===statsRange));
 }
 

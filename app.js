@@ -36,15 +36,19 @@ function reimbursementPeriod(now=new Date()){
 }
 function subscriptionCycle(s,now=new Date()){
  const start=new Date((s.startDate||new Date().toISOString().slice(0,10))+'T12:00:00');
- let due;
+ let due,cycle;
  if(s.frequency==='annual'){
-  due=new Date(now.getFullYear(),start.getMonth(),Math.min(start.getDate(),new Date(now.getFullYear(),start.getMonth()+1,0).getDate()),12);
-  if(now<due)due=new Date(now.getFullYear()-1,start.getMonth(),Math.min(start.getDate(),new Date(now.getFullYear()-1,start.getMonth()+1,0).getDate()),12);
-  return {due,cycle:String(due.getFullYear())};
+  const year=Math.max(now.getFullYear(),start.getFullYear());
+  due=new Date(year,start.getMonth(),Math.min(start.getDate(),new Date(year,start.getMonth()+1,0).getDate()),12);
+  if(due<start)due=new Date(year+1,start.getMonth(),Math.min(start.getDate(),new Date(year+1,start.getMonth()+1,0).getDate()),12);
+  cycle=String(due.getFullYear());
+ }else{
+  const year=Math.max(now.getFullYear(),start.getFullYear()),month=year===start.getFullYear()&&now.getFullYear()===start.getFullYear()?Math.max(now.getMonth(),start.getMonth()):now.getMonth();
+  due=new Date(year,month,Math.min(Number(s.day)||1,new Date(year,month+1,0).getDate()),12);
+  if(due<start){const next=new Date(year,month+1,1);due=new Date(next.getFullYear(),next.getMonth(),Math.min(Number(s.day)||1,new Date(next.getFullYear(),next.getMonth()+1,0).getDate()),12)}
+  cycle=monthKey(due);
  }
- due=new Date(now.getFullYear(),now.getMonth(),Math.min(Number(s.day)||1,new Date(now.getFullYear(),now.getMonth()+1,0).getDate()),12);
- if(now<due)due=new Date(now.getFullYear(),now.getMonth()-1,Math.min(Number(s.day)||1,new Date(now.getFullYear(),now.getMonth(),0).getDate()),12);
- return {due,cycle:monthKey(due)};
+ return {due,cycle};
 }
 async function saveSubscriptions(){
  const {data,error}=await sb.auth.updateUser({data:{subscriptions}});

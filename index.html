@@ -38,9 +38,10 @@
     <div id="movementList" class="movement-list home-only"><div class="empty-state">Ancora nessun movimento.<br>Registra la prima entrata o uscita.</div></div>
   <section id="statsView" class="stats-view" hidden></section>
   <section id="bonificoView" class="stats-view" hidden></section>
+  <section id="subscriptionsView" class="stats-view" hidden></section>
   </main>
   <button class="add-fab" id="addBtn"><span>＋</span> Aggiungi movimento</button>
-  <nav class="tabbar"><button class="tab active" data-tab="home"><span>⌂</span>Home</button><button class="tab" data-tab="stats"><span>▥</span>Statistiche</button><button class="tab" data-tab="bonifico"><span>€</span>Bonifico</button><button class="tab" data-tab="history"><span>◷</span>Storico</button></nav>
+  <nav class="tabbar"><button class="tab active" data-tab="home"><span>⌂</span>Home</button><button class="tab" data-tab="stats"><span>▥</span>Statistiche</button><button class="tab" data-tab="bonifico"><span>€</span>Bonifico</button><button class="tab" data-tab="subscriptions"><span>↻</span>Abbonamenti</button><button class="tab" data-tab="history"><span>◷</span>Storico</button></nav>
 </div>
 <div class="modal-backdrop hidden" id="modalBackdrop">
   <form class="modal" id="movementForm">
@@ -54,6 +55,7 @@
     <button class="primary-button" type="submit">Salva movimento</button>
   </form>
 </div>
+<div class="modal-backdrop hidden" id="subscriptionBackdrop"><form class="modal" id="subscriptionForm"><div class="modal-handle"></div><div class="modal-title-row"><div><p class="eyebrow">NUOVA SPESA RICORRENTE</p><h2>Aggiungi abbonamento</h2></div><button type="button" class="icon-button" id="closeSubscriptionModal">✕</button></div><label>Nome abbonamento<input id="subName" maxlength="70" placeholder="Es. Netflix" required></label><label>Importo (€)<input id="subAmount" type="number" min="0.01" step="0.01" placeholder="0,00" required></label><div class="form-row"><label>Frequenza<select id="subFrequency"><option value="monthly">Mensile</option><option value="annual">Annuale</option></select></label><label>Giorno di addebito<input id="subDay" type="number" min="1" max="31" value="10" required></label></div><label>Data di inizio<input id="subStartDate" type="date" required></label><label class="reimburse-option"><input id="subTransfer" type="checkbox"><span>Da aggiungere al bonifico</span></label><p class="stats-muted">L'addebito comparirà tra quelli da confermare quando raggiunge la data prevista. Verrà registrato con la data effettiva della conferma.</p><button class="primary-button" type="submit">Salva abbonamento</button></form></div>
 <div class="modal-backdrop hidden" id="settingsBackdrop"><div class="modal"><div class="modal-title-row"><div><p class="eyebrow">PREFERENZE</p><h2>Impostazioni</h2></div><button class="icon-button" id="closeSettings">✕</button></div><p class="settings-note">La prima versione salva i dati in modo locale su questo browser. Il database cloud verrà attivato dopo la configurazione di Supabase.</p><button class="secondary-button" id="exportBtn">Esporta movimenti in CSV</button><button class="secondary-button" id="backupBtn">Scarica backup JSON</button><button class="danger-button" id="clearBtn">Cancella tutti i movimenti</button></div></div>
 <div class="toast" id="toast" role="status"></div>
 <div id="authScreen" style="display:none;min-height:100vh;place-items:center;padding:24px"></div>

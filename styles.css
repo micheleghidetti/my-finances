@@ -21,3 +21,6 @@
 .reimburse-amount{white-space:nowrap}
 .reimburse-remove{flex:0 0 30px;width:30px;height:30px;border:0;border-radius:9px;background:#f8e9e8;color:#a94e49;font-size:20px;line-height:1;cursor:pointer}
 .reimburse-remove:active{transform:scale(.96)}
+
+.movement-delete{flex:0 0 30px;width:30px;height:30px;border:0;border-radius:9px;background:#f8e9e8;color:#a94e49;font-size:20px;line-height:1;cursor:pointer}
+.movement-delete:disabled{opacity:.5;cursor:wait}

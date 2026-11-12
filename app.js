@@ -24,7 +24,7 @@ async function loadCloud(){
   const {data,error}=await sb.from('transactions').select('*').order('transaction_date',{ascending:false}).order('created_at',{ascending:false});
   if(error)throw error;items=(data||[]).map(fromDb);saveLocal();render();renderBonifico();
 }
-function movementHTML(x){const ico={Casa:'⌂',Alimentari:'🛒',Trasporti:'🚆',Salute:'✚',Svago:'♫',Shopping:'◇',Abbonamenti:'▣',Auto:'⌁',Viaggi:'✈',Stipendio:'▤','Lavoro extra':'✦',Rimborsi:'↩',Regali:'♡',Investimenti:'▥',Altro:'•'};return '<div class="movement"><div class="movement-icon">'+(ico[x.category]||'•')+'</div><div class="movement-info"><strong>'+escapeHTML(x.description)+'</strong><small>'+escapeHTML(x.category)+(isReimbursable(x)?' · Da rimborsare':'')+' · '+dateFmt(x.date)+'</small></div><div class="movement-amount '+x.type+'">'+(x.type==='income'?'+':'−')+' '+fmt(x.amount)+'</div>'+(x.type==='expense'?'<button type="button" class="movement-delete" data-delete-movement="'+x.id+'" aria-label="Elimina '+escapeHTML(x.description)+'" title="Elimina spesa">×</button>':'')+'</div>'}
+function movementHTML(x){const ico={Casa:'⌂',Alimentari:'🛒',Trasporti:'🚆',Salute:'✚',Svago:'♫',Shopping:'◇',Abbonamenti:'▣',Auto:'⌁',Viaggi:'✈',Stipendio:'▤','Lavoro extra':'✦',Rimborsi:'↩',Regali:'♡',Investimenti:'▥',Altro:'•'};return '<div class="movement"><div class="movement-icon">'+(ico[x.category]||'•')+'</div><div class="movement-info"><strong>'+escapeHTML(x.description)+'</strong><small>'+escapeHTML(x.category)+(isReimbursable(x)?' · Da rimborsare':'')+' · '+dateFmt(x.date)+'</small></div><div class="movement-amount '+x.type+'">'+(x.type==='income'?'+':'−')+' '+fmt(x.amount)+'</div>'+'<button type="button" class="movement-delete" data-delete-movement="'+x.id+'" aria-label="Elimina '+escapeHTML(x.description)+'" title="Elimina movimento">×</button>'+'</div>'}
 function render(){const list=selected(),t=totals(list);$('monthTitle').textContent=viewDate.toLocaleDateString('it-IT',{month:'long',year:'numeric'});$('periodLabel').textContent=viewDate.toLocaleDateString('it-IT',{month:'long'});$('balance').textContent=fmt(t.income-t.expense);$('incomeTotal').textContent=fmt(t.income);$('expenseTotal').textContent=fmt(t.expense);renderChart(list);const sorted=[...list].sort((a,b)=>b.date.localeCompare(a.date)||b.created-a.created).slice(0,6);$('movementList').innerHTML=sorted.length?sorted.map(movementHTML).join(''):'<div class="empty-state">Ancora nessun movimento.<br>Registra la prima entrata o uscita.</div>';renderStats()}
 function reimbursementPeriod(now=new Date()){
  const y=now.getFullYear(),m=now.getMonth(),day=now.getDate();
@@ -105,8 +105,8 @@ function initApp(){
  $('movementList').addEventListener('click',async e=>{
   const button=e.target.closest('[data-delete-movement]');if(!button)return;
   const id=button.dataset.deleteMovement,x=items.find(item=>item.id===id);
-  if(!x||x.type!=='expense')return;
-  if(!confirm('Vuoi eliminare definitivamente la spesa "'+x.description+'" di '+fmt(x.amount)+'? Verrà rimossa anche dal riepilogo dei rimborsi, se contrassegnata.'))return;
+  if(!x)return;
+  if(!confirm('Vuoi eliminare definitivamente il movimento "'+x.description+'" di '+fmt(x.amount)+'?'+(x.type==='expense'&&isReimbursable(x)?' Verrà rimossa anche dal riepilogo dei rimborsi.':'')))return;
   button.disabled=true;
   try{
    const {error}=await sb.from('transactions').delete().eq('id',id).eq('user_id',currentUser.id);

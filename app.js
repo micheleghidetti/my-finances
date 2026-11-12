@@ -3,7 +3,7 @@ const SUPABASE_PUBLISHABLE_KEY='sb_publishable_5f9pO2kWA1BfpDk-BbBeYg_Nx5ELcHS';
 const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY);
 const $=id=>document.getElementById(id), STORE='my-finances-v1';
 const cats={expense:['Casa','Alimentari','Trasporti','Salute','Svago','Shopping','Abbonamenti','Auto','Viaggi','Altro'],income:['Stipendio','Lavoro extra','Rimborsi','Regali','Investimenti','Altro']};
-let items=[],viewDate=new Date(),type='expense',toastTimer,currentUser=null,statsRange='month';
+let items=[],subscriptions=[],viewDate=new Date(),type='expense',toastTimer,currentUser=null,statsRange='month';
 const REIMBURSE_MARK='[[rimborso-papa]]';
 function isReimbursable(x){return x.type==='expense'&&String(x.notes||'').includes(REIMBURSE_MARK)}
 function cleanNotes(s){return String(s||'').replace(REIMBURSE_MARK,'').trim()}
@@ -22,7 +22,7 @@ async function loadCloud(){
   // Supabase is the single source of truth. Never re-import browser cache,
   // because cached rows could restore transactions that were deleted in the cloud.
   const {data,error}=await sb.from('transactions').select('*').order('transaction_date',{ascending:false}).order('created_at',{ascending:false});
-  if(error)throw error;items=(data||[]).map(fromDb);saveLocal();render();renderBonifico();
+  if(error)throw error;items=(data||[]).map(fromDb);const {data:userData,error:userError}=await sb.auth.getUser();if(userError)throw userError;currentUser=userData.user;subscriptions=Array.isArray(currentUser.user_metadata?.subscriptions)?currentUser.user_metadata.subscriptions:[];saveLocal();render();renderBonifico();renderSubscriptions();
 }
 function movementHTML(x){const ico={Casa:'⌂',Alimentari:'🛒',Trasporti:'🚆',Salute:'✚',Svago:'♫',Shopping:'◇',Abbonamenti:'▣',Auto:'⌁',Viaggi:'✈',Stipendio:'▤','Lavoro extra':'✦',Rimborsi:'↩',Regali:'♡',Investimenti:'▥',Altro:'•'};return '<div class="movement"><div class="movement-icon">'+(ico[x.category]||'•')+'</div><div class="movement-info"><strong>'+escapeHTML(x.description)+'</strong><small>'+escapeHTML(x.category)+(isReimbursable(x)?' · Da rimborsare':'')+' · '+dateFmt(x.date)+'</small></div><div class="movement-amount '+x.type+'">'+(x.type==='income'?'+':'−')+' '+fmt(x.amount)+'</div>'+'<button type="button" class="movement-delete '+x.type+'" data-delete-movement="'+x.id+'" aria-label="Elimina '+escapeHTML(x.description)+'" title="Elimina movimento">×</button>'+'</div>'}
 function render(){const list=selected(),t=totals(list);$('monthTitle').textContent=viewDate.toLocaleDateString('it-IT',{month:'long',year:'numeric'});$('periodLabel').textContent=viewDate.toLocaleDateString('it-IT',{month:'long'});$('balance').textContent=fmt(t.income-t.expense);$('incomeTotal').textContent=fmt(t.income);$('expenseTotal').textContent=fmt(t.expense);renderChart(list);const sorted=[...list].sort((a,b)=>b.date.localeCompare(a.date)||b.created-a.created).slice(0,6);$('movementList').innerHTML=sorted.length?sorted.map(movementHTML).join(''):'<div class="empty-state">Ancora nessun movimento.<br>Registra la prima entrata o uscita.</div>';renderStats()}
@@ -33,6 +33,43 @@ function reimbursementPeriod(now=new Date()){
  const transfer=new Date(end.getFullYear(),end.getMonth(),10);
  const iso=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
  return {start:iso(start),end:iso(end),transfer};
+}
+function subscriptionCycle(s,now=new Date()){
+ const start=new Date((s.startDate||new Date().toISOString().slice(0,10))+'T12:00:00');
+ let due;
+ if(s.frequency==='annual'){
+  due=new Date(now.getFullYear(),start.getMonth(),Math.min(start.getDate(),new Date(now.getFullYear(),start.getMonth()+1,0).getDate()),12);
+  if(now<due)due=new Date(now.getFullYear()-1,start.getMonth(),Math.min(start.getDate(),new Date(now.getFullYear()-1,start.getMonth()+1,0).getDate()),12);
+  return {due,cycle:String(due.getFullYear())};
+ }
+ due=new Date(now.getFullYear(),now.getMonth(),Math.min(Number(s.day)||1,new Date(now.getFullYear(),now.getMonth()+1,0).getDate()),12);
+ if(now<due)due=new Date(now.getFullYear(),now.getMonth()-1,Math.min(Number(s.day)||1,new Date(now.getFullYear(),now.getMonth(),0).getDate()),12);
+ return {due,cycle:monthKey(due)};
+}
+async function saveSubscriptions(){
+ const {data,error}=await sb.auth.updateUser({data:{subscriptions}});
+ if(error)throw error;
+ currentUser=data.user;
+}
+function renderSubscriptions(){
+ const rows=subscriptions.filter(s=>s.active!==false);
+ const monthly=rows.reduce((sum,s)=>sum+(s.frequency==='annual'?Number(s.amount)/12:Number(s.amount)),0);
+ const list=rows.length?rows.map(s=>{
+  const {due,cycle}=subscriptionCycle(s),marker='[[sub:'+s.id+':'+cycle+']]';
+  const pending=due<=new Date()&&!items.some(x=>String(x.notes||'').includes(marker));
+  return '<div class="subscription-row"><div class="subscription-info"><b>'+escapeHTML(s.name)+'</b><small>'+fmt(Number(s.amount))+' · '+(s.frequency==='annual'?'Annuale':'Mensile')+' · Giorno '+(s.frequency==='annual'?due.toLocaleDateString('it-IT',{day:'2-digit',month:'long'}):s.day)+'</small><small class="'+(s.includeInTransfer?'sub-transfer':'sub-personal')+'">'+(s.includeInTransfer?'Da aggiungere al bonifico':'Personale')+'</small></div><div class="subscription-actions">'+(pending?'<button class="sub-confirm" data-confirm-sub="'+s.id+'" data-cycle="'+cycle+'">Conferma</button>':'<span class="sub-status">'+(due>new Date()?'Prossimo addebito: '+due.toLocaleDateString('it-IT',{day:'2-digit',month:'short'}):'Addebito registrato')+'</span>')+'<button class="sub-delete" data-delete-sub="'+s.id+'" aria-label="Disattiva '+escapeHTML(s.name)+'">×</button></div></div>';
+ }).join(''):'<div class="empty-state">Non hai ancora inserito abbonamenti.</div>';
+ $('subscriptionsView').innerHTML='<div class="stats-heading"><p class="eyebrow">SPESE RICORRENTI</p><h2>I miei abbonamenti</h2><p class="stats-muted">Confermi tu ogni addebito prima che venga registrato nei movimenti.</p></div><div class="stats-kpis"><article class="stat-card"><span>Totale mensile stimato</span><strong>'+fmt(monthly)+'</strong><small>'+rows.length+' abbonamenti attivi</small></article><article class="stat-card"><span>Inclusi nel bonifico</span><strong>'+fmt(rows.filter(s=>s.includeInTransfer).reduce((sum,s)=>sum+(s.frequency==='annual'?Number(s.amount)/12:Number(s.amount)),0))+'</strong><small>Stima mensile</small></article></div><article class="stats-panel"><h3>Elenco abbonamenti</h3>'+list+'<button class="primary-button" id="addSubscriptionBtn">＋ Aggiungi abbonamento</button></article>';
+ $('addSubscriptionBtn').onclick=()=>{$('subscriptionForm').reset();$('subStartDate').value=new Date().toLocaleDateString('en-CA');$('subscriptionBackdrop').classList.remove('hidden')};
+ $('subscriptionsView').querySelectorAll('[data-confirm-sub]').forEach(b=>b.onclick=()=>confirmSubscription(b.dataset.confirmSub,b.dataset.cycle));
+ $('subscriptionsView').querySelectorAll('[data-delete-sub]').forEach(b=>b.onclick=async()=>{const s=subscriptions.find(x=>x.id===b.dataset.deleteSub);if(!s||!confirm('Vuoi disattivare l’abbonamento "'+s.name+'"? Lo storico dei movimenti già registrati resterà invariato.'))return;s.active=false;try{await saveSubscriptions();renderSubscriptions();toast('Abbonamento disattivato')}catch(e){s.active=true;toast('Modifica non riuscita: '+e.message)}});
+}
+async function confirmSubscription(id,cycle){
+ const s=subscriptions.find(x=>x.id===id);if(!s)return;
+ const marker='[[sub:'+s.id+':'+cycle+']]';
+ if(items.some(x=>String(x.notes||'').includes(marker)))return toast('Questo addebito è già stato registrato');
+ const x={id:crypto.randomUUID(),type:'expense',description:s.name,amount:Math.round(Number(s.amount)*100)/100,category:'Abbonamenti',date:new Date().toLocaleDateString('en-CA'),notes:(s.includeInTransfer?REIMBURSE_MARK+' ':'')+marker,created:Date.now()};
+ try{await syncOne(x);items.push(x);saveLocal();render();renderBonifico();renderSubscriptions();toast('Addebito registrato')}catch(e){toast('Non è stato possibile registrare l’addebito: '+e.message)}
 }
 function renderBonifico(){
  const period=reimbursementPeriod(),rows=items.filter(x=>isReimbursable(x)&&x.date>=period.start&&x.date<=period.end).sort((a,b)=>a.date.localeCompare(b.date)||a.created-b.created);
@@ -98,6 +135,7 @@ async function startApp(user){currentUser=user;document.getElementById('authScre
 function initApp(){
  $('addBtn').onclick=openModal;$('closeModal').onclick=()=>$('modalBackdrop').classList.add('hidden');$('modalBackdrop').onclick=e=>{if(e.target===$('modalBackdrop'))$('modalBackdrop').classList.add('hidden')};
  document.querySelectorAll('.type-switch button').forEach(b=>b.onclick=()=>{type=b.dataset.type;setType()});
+ $('closeSubscriptionModal').onclick=()=>$('subscriptionBackdrop').classList.add('hidden');$('subscriptionBackdrop').onclick=e=>{if(e.target===$('subscriptionBackdrop'))$('subscriptionBackdrop').classList.add('hidden')};$('subscriptionForm').onsubmit=async e=>{e.preventDefault();const s={id:crypto.randomUUID(),name:$('subName').value.trim(),amount:Math.round(Number($('subAmount').value)*100)/100,day:Number($('subDay').value),frequency:$('subFrequency').value,startDate:$('subStartDate').value,includeInTransfer:$('subTransfer').checked,active:true};if(!s.name||!Number.isFinite(s.amount)||s.amount<=0)return toast('Controlla nome e importo');subscriptions.push(s);try{await saveSubscriptions();$('subscriptionBackdrop').classList.add('hidden');renderSubscriptions();toast('Abbonamento salvato e sincronizzato')}catch(err){subscriptions=subscriptions.filter(x=>x.id!==s.id);toast('Non salvato: '+err.message)}};
  $('movementForm').onsubmit=async e=>{e.preventDefault();const amount=Number($('amount').value);if(!Number.isFinite(amount)||amount<=0)return toast('Inserisci un importo valido');const x={id:crypto.randomUUID(),type,description:$('description').value.trim(),amount:Math.round(amount*100)/100,category:$('category').value,date:$('date').value,notes:$('notes').value.trim()+($('reimbursable').checked&&type==='expense'?'\n'+REIMBURSE_MARK:''),created:Date.now()};try{await syncOne(x);items.push(x);saveLocal();$('modalBackdrop').classList.add('hidden');viewDate=new Date(x.date+'T12:00:00');render();renderBonifico();toast('Movimento salvato e sincronizzato')}catch(err){toast('Non salvato: '+err.message)}};
  $('prevMonth').onclick=()=>{viewDate.setMonth(viewDate.getMonth()-1);render()};$('nextMonth').onclick=()=>{viewDate.setMonth(viewDate.getMonth()+1);render()};
  $('refreshBtn').onclick=async()=>{const b=$('refreshBtn');if(b.disabled)return;b.disabled=true;b.classList.add('is-refreshing');try{await loadCloud();toast('Movimenti aggiornati')}catch(err){toast('Aggiornamento non riuscito: '+err.message)}finally{b.disabled=false;b.classList.remove('is-refreshing')}};$('settingsBtn').onclick=()=>$('settingsBackdrop').classList.remove('hidden');$('closeSettings').onclick=()=>$('settingsBackdrop').classList.add('hidden');$('exportBtn').onclick=csv;$('backupBtn').onclick=()=>download(JSON.stringify({version:1,exportedAt:new Date().toISOString(),items},null,2),'my-finances-backup.json','application/json');
@@ -115,8 +153,8 @@ function initApp(){
   }catch(error){button.disabled=false;toast('Eliminazione non riuscita: '+error.message)}
  });
  $('allMovements').onclick=()=>{const all=[...items].sort((a,b)=>b.date.localeCompare(a.date));$('movementList').innerHTML=all.length?all.map(movementHTML).join(''):'<div class="empty-state">Nessun movimento registrato.</div>'};
- document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>{document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active',x===b));const tab=b.dataset.tab;document.querySelectorAll('.home-only').forEach(el=>el.style.display=tab==='home'?'':'none');$('statsView').hidden=tab!=='stats';$('statsView').style.display=tab==='stats'?'':'none';$('bonificoView').hidden=tab!=='bonifico';$('bonificoView').style.display=tab==='bonifico'?'':'none';if(tab==='home')render();else if(tab==='stats')renderStats();else if(tab==='bonifico')renderBonifico();else{$('movementList').style.display='';$('movementList').innerHTML=items.length?'<div class="empty-state">Movimenti registrati: <b>'+items.length+'</b><br>Usa le frecce accanto al mese per consultare lo storico.</div>':'<div class="empty-state">Lo storico è vuoto.</div>'}});
- const settings=$('settingsBackdrop').querySelector('.modal');const status=document.createElement('p');status.id='cloudStatus';status.style.cssText='font-size:12px;color:var(--muted);margin:0 0 12px';status.textContent='Connessione cloud attiva';settings.insertBefore(status,settings.children[2]);const logout=document.createElement('button');logout.className='secondary-button';logout.textContent='Esci dall’account';logout.onclick=async()=>{await sb.auth.signOut();location.reload()};settings.insertBefore(logout,$('clearBtn'));render();renderBonifico();
+ document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>{document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active',x===b));const tab=b.dataset.tab;document.querySelectorAll('.home-only').forEach(el=>el.style.display=tab==='home'?'':'none');$('statsView').hidden=tab!=='stats';$('statsView').style.display=tab==='stats'?'':'none';$('bonificoView').hidden=tab!=='bonifico';$('bonificoView').style.display=tab==='bonifico'?'':'none';$('subscriptionsView').hidden=tab!=='subscriptions';$('subscriptionsView').style.display=tab==='subscriptions'?'':'none';if(tab==='home')render();else if(tab==='stats')renderStats();else if(tab==='bonifico')renderBonifico();else if(tab==='subscriptions')renderSubscriptions();else{$('movementList').style.display='';$('movementList').innerHTML=items.length?'<div class="empty-state">Movimenti registrati: <b>'+items.length+'</b><br>Usa le frecce accanto al mese per consultare lo storico.</div>':'<div class="empty-state">Lo storico è vuoto.</div>'}});
+ const settings=$('settingsBackdrop').querySelector('.modal');const status=document.createElement('p');status.id='cloudStatus';status.style.cssText='font-size:12px;color:var(--muted);margin:0 0 12px';status.textContent='Connessione cloud attiva';settings.insertBefore(status,settings.children[2]);const logout=document.createElement('button');logout.className='secondary-button';logout.textContent='Esci dall’account';logout.onclick=async()=>{await sb.auth.signOut();location.reload()};settings.insertBefore(logout,$('clearBtn'));render();renderBonifico();renderSubscriptions();
 }
 initApp();
 sb.auth.getSession().then(({data,error})=>{if(error){showAuth(error.message);return}if(data.session)startApp(data.session.user);else showAuth()});

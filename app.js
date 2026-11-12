@@ -38,7 +38,7 @@ function renderBonifico(){
  const period=reimbursementPeriod(),rows=items.filter(x=>isReimbursable(x)&&x.date>=period.start&&x.date<=period.end).sort((a,b)=>a.date.localeCompare(b.date)||a.created-b.created);
  const reimbursed=rows.reduce((sum,x)=>sum+x.amount,0),base=600,total=base+reimbursed;
  const fmtDate=d=>d.toLocaleDateString('it-IT',{day:'2-digit',month:'long',year:'numeric'});
- const list=rows.length?rows.map(x=>'<div class="reimburse-row"><div><b>'+escapeHTML(x.description)+'</b><small>'+escapeHTML(x.category)+' · '+dateFmt(x.date)+'</small></div><strong>'+fmt(x.amount)+'</strong></div>').join(''):'<div class="empty-state">Nessuna spesa da rimborsare registrata in questo periodo.</div>';
+ const list=rows.length?rows.map(x=>'<div class="reimburse-row"><div class="reimburse-info"><b>'+escapeHTML(x.description)+'</b><small>'+escapeHTML(x.category)+' · '+dateFmt(x.date)+'</small></div><strong class="reimburse-amount">'+fmt(x.amount)+'</strong><button type="button" class="reimburse-remove" data-remove-reimburse="'+x.id+'" aria-label="Rimuovi '+escapeHTML(x.description)+'" title="Rimuovi dai rimborsi">×</button></div>').join(''):'<div class="empty-state">Nessuna spesa da rimborsare registrata in questo periodo.</div>';
  const message='Ciao! Per il bonifico del '+fmtDate(period.transfer)+', oltre ai 600,00 € abituali, ci sono queste spese da rimborsare:\n'+(rows.length?rows.map(x=>'- '+x.description+' ('+x.category+'): '+fmt(x.amount)).join('\n'):'Nessuna spesa da rimborsare')+'\nTotale rimborsi: '+fmt(reimbursed)+'\nTotale bonifico: '+fmt(total);
  $('bonificoView').innerHTML='<div class="stats-heading"><p class="eyebrow">BONIFICO DEL 10</p><h2>Riepilogo per papà</h2><p class="stats-muted">Periodo spese: dal '+fmtDate(new Date(period.start+'T12:00:00'))+' al '+fmtDate(new Date(period.end+'T12:00:00'))+'</p></div>'+
  '<div class="stats-kpis"><article class="stat-card"><span>Bonifico abituale</span><strong>'+fmt(base)+'</strong><small>Importo fisso mensile</small></article><article class="stat-card"><span>Spese da rimborsare</span><strong>'+fmt(reimbursed)+'</strong><small>'+rows.length+' '+(rows.length===1?'spesa registrata':'spese registrate')+'</small></article></div>'+
@@ -46,6 +46,17 @@ function renderBonifico(){
  '<article class="transfer-total"><span>Totale da ricevere il '+fmtDate(period.transfer)+'</span><strong>'+fmt(total)+'</strong><small>600,00 € + '+fmt(reimbursed)+' di rimborsi</small></article>'+
  '<article class="stats-panel"><h3>Messaggio pronto</h3><textarea id="reimburseMessage" rows="6" readonly>'+escapeHTML(message)+'</textarea><button type="button" class="secondary-button" id="copyReimburseMessage">Copia messaggio</button></article>'+
  '<p class="stats-muted">Le spese contrassegnate come “Da rimborsare” vengono conteggiate qui e restano comunque incluse nelle tue normali uscite.</p>';
+ $('bonificoView').querySelectorAll('[data-remove-reimburse]').forEach(button=>button.onclick=async()=>{
+  const id=button.dataset.removeReimburse,x=items.find(item=>item.id===id);
+  if(!x||!isReimbursable(x))return;
+  if(!confirm('Vuoi togliere "'+x.description+'" dall’elenco delle spese da rimborsare? La spesa resterà registrata tra le tue uscite.'))return;
+  const updated={...x,notes:cleanNotes(x.notes)};
+  try{
+   const {error}=await sb.from('transactions').update({notes:updated.notes||null}).eq('id',x.id).eq('user_id',currentUser.id);
+   if(error)throw error;
+   items=items.map(item=>item.id===id?updated:item);saveLocal();render();renderBonifico();toast('Spesa rimossa dai rimborsi');
+  }catch(error){toast('Non è stato possibile aggiornare la spesa: '+error.message)}
+ });
  $('copyReimburseMessage').onclick=async()=>{try{await navigator.clipboard.writeText(message);toast('Messaggio copiato')}catch(e){$('reimburseMessage').focus();$('reimburseMessage').select();toast('Seleziona il testo e copialo')}}
 }
 function renderChart(list){const el=$('monthlyChart'),d=totals(list),max=Math.max(d.income,d.expense,1),last=new Date(viewDate.getFullYear(),viewDate.getMonth()+1,0).getDate();let bars='';for(let i=1;i<=last;i+=Math.ceil(last/7)){const key=monthKey(viewDate)+'-'+String(i).padStart(2,'0'),v=totals(list.filter(x=>x.date===key));bars+='<div class="chart-group"><div class="bar income" style="height:'+Math.max(2,v.income/max*100)+'%"></div><div class="bar expense" style="height:'+Math.max(2,v.expense/max*100)+'%"></div><span class="chart-label">'+i+'</span></div>'}el.innerHTML=bars}

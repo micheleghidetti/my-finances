@@ -25,7 +25,19 @@ async function loadCloud(){
   if(error)throw error;items=(data||[]).map(fromDb);const {data:userData,error:userError}=await sb.auth.getUser();if(userError)throw userError;currentUser=userData.user;subscriptions=Array.isArray(currentUser.user_metadata?.subscriptions)?currentUser.user_metadata.subscriptions:[];saveLocal();render();renderBonifico();renderSubscriptions();
 }
 function movementHTML(x){const ico={Casa:'⌂',Alimentari:'🛒',Trasporti:'🚆',Salute:'✚',Svago:'♫',Shopping:'◇',Abbonamenti:'▣',Auto:'⌁',Viaggi:'✈',Stipendio:'▤','Lavoro extra':'✦',Rimborsi:'↩',Regali:'♡',Investimenti:'▥',Altro:'•'};return '<div class="movement"><div class="movement-icon">'+(ico[x.category]||'•')+'</div><div class="movement-info"><strong>'+escapeHTML(x.description)+'</strong><small>'+escapeHTML(x.category)+(isReimbursable(x)?' · Da rimborsare':'')+' · '+dateFmt(x.date)+'</small></div><div class="movement-amount '+x.type+'">'+(x.type==='income'?'+':'−')+' '+fmt(x.amount)+'</div>'+'<button type="button" class="movement-delete '+x.type+'" data-delete-movement="'+x.id+'" aria-label="Elimina '+escapeHTML(x.description)+'" title="Elimina movimento">×</button>'+'</div>'}
-function render(){const list=selected(),t=totals(list);$('monthTitle').textContent=viewDate.toLocaleDateString('it-IT',{month:'long',year:'numeric'});$('periodLabel').textContent=viewDate.toLocaleDateString('it-IT',{month:'long'});$('balance').textContent=fmt(t.income-t.expense);$('incomeTotal').textContent=fmt(t.income);$('expenseTotal').textContent=fmt(t.expense);renderChart(list);const sorted=[...list].sort((a,b)=>b.date.localeCompare(a.date)||b.created-a.created).slice(0,6);$('movementList').innerHTML=sorted.length?sorted.map(movementHTML).join(''):'<div class="empty-state">Ancora nessun movimento.<br>Registra la prima entrata o uscita.</div>';renderStats()}
+function renderHomeSubscriptions(){
+ const rows=subscriptions.filter(s=>s.active!==false).map(s=>{
+  const {due,cycle}=subscriptionCycle(s),marker='[[sub:'+s.id+':'+cycle+']]';
+  const done=items.some(x=>String(x.notes||'').includes(marker));
+  const dueLabel=due.toLocaleDateString('it-IT',{day:'2-digit',month:'short'});
+  return '<div class="home-sub-row"><div class="home-sub-info"><b>'+escapeHTML(s.name)+'</b><small>Abbonamento · '+(s.frequency==='annual'?'Annuale':'Mensile')+' · '+dueLabel+'</small></div><strong>'+fmt(Number(s.amount))+'</strong>'+(done?'<span class="home-sub-done">Registrato</span>':due<=new Date()?'<button class="sub-confirm" data-home-confirm-sub="'+s.id+'" data-cycle="'+cycle+'">Conferma</button>':'<span class="home-sub-next">In programma</span>')+'</div>';
+ }).join('');
+ const host=$('homeSubscriptions');if(!host)return;
+ host.innerHTML='<div class="section-head"><div><p class="eyebrow">RICORRENZE</p><h2>Abbonamenti</h2></div><button class="text-button" id="homeAllSubscriptions">Vedi tutti</button></div><div class="home-sub-list">'+(rows||'<div class="empty-state">Non hai ancora inserito abbonamenti.</div>')+'</div>';
+ $('homeAllSubscriptions').onclick=()=>document.querySelector('[data-tab="subscriptions"]').click();
+ host.querySelectorAll('[data-home-confirm-sub]').forEach(b=>b.onclick=()=>confirmSubscription(b.dataset.homeConfirmSub,b.dataset.cycle));
+}
+function render(){const list=selected(),t=totals(list);$('monthTitle').textContent=viewDate.toLocaleDateString('it-IT',{month:'long',year:'numeric'});$('periodLabel').textContent=viewDate.toLocaleDateString('it-IT',{month:'long'});$('balance').textContent=fmt(t.income-t.expense);$('incomeTotal').textContent=fmt(t.income);$('expenseTotal').textContent=fmt(t.expense);renderChart(list);const sorted=[...list].sort((a,b)=>b.date.localeCompare(a.date)||b.created-a.created).slice(0,6);$('movementList').innerHTML=sorted.length?sorted.map(movementHTML).join(''):'<div class="empty-state">Ancora nessun movimento.<br>Registra la prima entrata o uscita.</div>';renderHomeSubscriptions();renderStats()}
 function reimbursementPeriod(now=new Date()){
  const y=now.getFullYear(),m=now.getMonth(),day=now.getDate();
  const start=day>=10?new Date(y,m,10):new Date(y,m-1,10);
